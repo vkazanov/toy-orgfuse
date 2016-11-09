@@ -17,6 +17,7 @@ class OrgFileParser():
 
     HEADER_TOKEN = 0
     TEXT_TOKEN = 1
+    END_TOKEN = 2
 
     HEADER_RE = re.compile(r"(\*+) (.+)")
 
@@ -24,34 +25,54 @@ class OrgFileParser():
         self._lines = _file.readlines()
 
     def _tokenize(self, lines):
-        tokens = []
+        raw_tokens = []
         cur_body_strs = []
+        cur_token = (self.HEADER_TOKEN, 0, "root", cur_body_strs)
+        depth = 0
         for line in lines:
-            from pprint import pprint
-            print("LINE:")
-            pprint(line)
             match = self.HEADER_RE.match(line)
             if match is None:
                 cur_body_strs.append(line)
             else:
                 if cur_body_strs:
-                    text_token = (self.TEXT_TOKEN, None, cur_body_strs)
-                    tokens.append(text_token)
+                    text_token = (self.TEXT_TOKEN, depth, cur_body_strs)
+                    raw_tokens.append(text_token)
                     cur_body_strs = []
-                header_token = (self.HEADER_TOKEN, len(match.group(1)), match.group(2))
-                tokens.append(header_token)
+                depth = len(match.group(1))
+                header_token = (self.HEADER_TOKEN, depth, match.group(2))
+                raw_tokens.append(header_token)
         else:
             if cur_body_strs:
-                text_token = (self.TEXT_TOKEN, None, cur_body_strs)
-                tokens.append(text_token)
+                text_token = (self.TEXT_TOKEN, depth, cur_body_strs)
+                raw_tokens.append(text_token)
+
+        raw_tokens.append((self.END_TOKEN, 0, None))
+
+        tokens = []
+        for i, token in enumerate(raw_tokens):
+            t_type, t_depth, t_body = raw_tokens[i]
+            if t_type != self.HEADER_TOKEN:
+                continue
+            nt_type, nt_depth, nt_body = raw_tokens[i+1]
+            title = t_body
+            depth = t_depth
+            body = nt_body if nt_type == self.TEXT_TOKEN else None
+            tokens.append((title, depth, body))
 
         return tokens
+
+    def _parse(self, tokens, depth=0):
+        pass
 
     def build_tree(self):
         tokens = self._tokenize(self._lines)
         from pprint import pprint
         print("TOKENS:")
         pprint(tokens)
+
+        parse_tree = self._parse(tokens)
+        print("TREE:")
+        pprint(parse_tree)
 
         root = OrgTree(OrgTree.DIR, "")
         root.add_child(OrgTree(OrgTree.FILE, "test1"))
@@ -137,13 +158,16 @@ if __name__ == '__main__':
     logging.basicConfig(level=logging.DEBUG)
     org_str = """
 * header 1
-header text
+header text 1
 ** inner header 1
 some inner text 1
+some inner text 1-2
 ** inner header 2
 inner text2
 ** inner header 3
 *** inner inner header 1
+* header 2
+header text 2
 """
     print(org_str)
     strio = StringIO(org_str)
