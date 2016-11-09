@@ -25,9 +25,8 @@ class OrgFileParser():
         self._lines = _file.readlines()
 
     def _tokenize(self, lines):
-        raw_tokens = []
         cur_body_strs = []
-        cur_token = (self.HEADER_TOKEN, 0, "root", cur_body_strs)
+        raw_tokens = [(self.HEADER_TOKEN, 0, "root")]
         depth = 0
         for line in lines:
             match = self.HEADER_RE.match(line)
@@ -61,7 +60,8 @@ class OrgFileParser():
 
         return tokens
 
-    def _parse(self, tokens, depth=0):
+    def _parse(self, tokens, depth=1):
+
         pass
 
     def build_tree(self):
@@ -157,6 +157,7 @@ if __name__ == '__main__':
 
     logging.basicConfig(level=logging.DEBUG)
     org_str = """
+just text
 * header 1
 header text 1
 ** inner header 1
