@@ -61,9 +61,6 @@ class OrgFileParser():
         return tokens
 
     def _parse_tokens(self, tokens):
-        return self._parse(tokens)[0]
-
-    def _parse(self, tokens):
         res = []
         while tokens:
             title, depth, body = tokens[0]
@@ -80,36 +77,34 @@ class OrgFileParser():
                 child_tokens = tokens
                 tokens = []
 
-            children = self._parse(child_tokens)
+            children = self._parse_tokens(child_tokens)
 
             res.append((title, depth, body, children))
         return res
 
     def build_tree(self):
         tokens = self._tokenize(self._lines)
-        from pprint import pprint
-        print("TOKENS:")
-        pprint(tokens)
+        parse_tree = self._parse_tokens(tokens)[0]
 
-        parse_tree = self._parse_tokens(tokens)
-        print("TREE:")
+        from pprint import pprint
+        pprint(tokens)
         pprint(parse_tree)
 
-        root = OrgTree(OrgTree.DIR, "")
-        root.add_child(OrgTree(OrgTree.FILE, "test1"))
-        root.add_child(OrgTree(OrgTree.FILE, "test2"))
-
-        child = OrgTree(OrgTree.DIR, "test3")
-        child.add_child(OrgTree(OrgTree.FILE, "test4"))
-        child.add_child(OrgTree(OrgTree.FILE, "test5"))
-
-        root.add_child(child)
-        return root
+        return OrgTree.from_parse_tree(parse_tree)
 
 class OrgTree():
 
     DIR = 0
     FILE = 1
+
+    @staticmethod
+    def from_parse_tree(root):
+        title, _, body, children = root
+        tree = OrgTree(OrgTree.DIR, title)
+        tree.add_child(OrgTree(OrgTree.FILE, "body"))
+        for child in children:
+            tree.add_child(OrgTree.from_parse_tree(child))
+        return tree
 
     def __init__(self, _type, name):
         self.type = _type
@@ -195,4 +190,4 @@ header text 2
     strio = StringIO(org_str)
     parser = OrgFileParser(strio)
     tree = parser.build_tree()
-    # fuse = FUSE(OrgTreeFS(tree), argv[1], foreground=True)
+    fuse = FUSE(OrgTreeFS(tree), argv[1], foreground=True)
