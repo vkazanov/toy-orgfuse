@@ -17,7 +17,6 @@ class OrgFileParser():
 
     HEADER_TOKEN = 0
     TEXT_TOKEN = 1
-    END_TOKEN = 2
 
     HEADER_RE = re.compile(r"(\*+) (.+)")
 
@@ -44,8 +43,6 @@ class OrgFileParser():
             if cur_body_strs:
                 text_token = (self.TEXT_TOKEN, depth, cur_body_strs)
                 raw_tokens.append(text_token)
-
-        raw_tokens.append((self.END_TOKEN, 0, None))
 
         tokens = []
         for i, token in enumerate(raw_tokens):
@@ -90,9 +87,9 @@ class OrgFileParser():
         pprint(tokens)
         pprint(parse_tree)
 
-        return OrgTree.from_parse_tree(parse_tree)
+        return FSTree.from_parse_tree(parse_tree)
 
-class OrgTree():
+class FSTree():
 
     DIR = 0
     FILE = 1
@@ -100,10 +97,10 @@ class OrgTree():
     @staticmethod
     def from_parse_tree(root):
         title, _, body, children = root
-        tree = OrgTree(OrgTree.DIR, title)
-        tree.add_child(OrgTree(OrgTree.FILE, "body"))
+        tree = FSTree(FSTree.DIR, title)
+        tree.add_child(FSTree(FSTree.FILE, "body"))
         for child in children:
-            tree.add_child(OrgTree.from_parse_tree(child))
+            tree.add_child(FSTree.from_parse_tree(child))
         return tree
 
     def __init__(self, _type, name):
@@ -137,7 +134,7 @@ DIR_ATTRS = dict(st_mode=(S_IFDIR | 0o755), st_ctime=NOW,
 FILE_ATTRS = dict(st_mode=(S_IFREG | 0o755), st_ctime=NOW,
                                st_mtime=NOW, st_atime=NOW, st_nlink=1)
 
-class OrgTreeFS(LoggingMixIn, Operations):
+class FuseOperations(LoggingMixIn, Operations):
 
     def __init__(self, tree):
         self.tree = tree
@@ -161,7 +158,7 @@ class OrgTreeFS(LoggingMixIn, Operations):
         node = self.tree.find_path(path)
         if node is None:
             raise FuseOSError(ENOENT)
-        if node.type == OrgTree.DIR:
+        if node.type == FSTree.DIR:
             return DIR_ATTRS
         else:
             return FILE_ATTRS
@@ -190,4 +187,4 @@ header text 2
     strio = StringIO(org_str)
     parser = OrgFileParser(strio)
     tree = parser.build_tree()
-    fuse = FUSE(OrgTreeFS(tree), argv[1], foreground=True)
+    fuse = FUSE(FuseOperations(tree), argv[1], foreground=True)
