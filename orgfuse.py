@@ -60,9 +60,30 @@ class OrgFileParser():
 
         return tokens
 
-    def _parse(self, tokens, depth=1):
+    def _parse_tokens(self, tokens):
+        return self._parse(tokens)[0]
 
-        pass
+    def _parse(self, tokens):
+        res = []
+        while tokens:
+            title, depth, body = tokens[0]
+            tokens = tokens[1:]
+
+            child_tokens = []
+            for i, token in enumerate(tokens):
+                _, child_depth, _ = token
+                if child_depth <= depth:
+                    child_tokens = tokens[:i]
+                    tokens = tokens[i:]
+                    break
+            else:
+                child_tokens = tokens
+                tokens = []
+
+            children = self._parse(child_tokens)
+
+            res.append((title, depth, body, children))
+        return res
 
     def build_tree(self):
         tokens = self._tokenize(self._lines)
@@ -70,7 +91,7 @@ class OrgFileParser():
         print("TOKENS:")
         pprint(tokens)
 
-        parse_tree = self._parse(tokens)
+        parse_tree = self._parse_tokens(tokens)
         print("TREE:")
         pprint(parse_tree)
 
