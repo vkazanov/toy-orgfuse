@@ -4,7 +4,7 @@ from __future__ import print_function, absolute_import, division
 import logging
 
 from collections import defaultdict
-from errno import ENOENT, EROFS
+from errno import ENOENT, EROFS, EIO
 from stat import S_IFDIR, S_IFLNK, S_IFREG
 from sys import argv, exit
 from time import time
@@ -102,8 +102,13 @@ class FSTree():
         headline, _, section, children = root
         tree = FSTree(FSTree.DIR_ATTRS, headline)
 
-        section_content = "".join(section) if section else None
-        section_node = FSTree(FSTree.FILE_ATTRS, "section", section_content)
+        section_attrs = FSTree.FILE_ATTRS.copy()
+        if section:
+            section_content = "".join(section)
+        else:
+            section_content = ""
+        section_attrs["st_size"] = len(section_content)
+        section_node = FSTree(section_attrs, "section", section_content)
         tree.add_child(section_node)
 
         for child in children:
@@ -153,8 +158,6 @@ class FuseOperations(LoggingMixIn, Operations):
     def read(self, path, size, offset, fh):
         node = self.tree.find_path(path)
         if node is None:
-            raise FuseOSError(EIO)
-        if node.content is None:
             raise FuseOSError(EIO)
         return node.content[offset:offset + size]
 
