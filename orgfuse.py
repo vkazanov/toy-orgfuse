@@ -90,10 +90,10 @@ NOW = time()
 
 class FSTree():
 
-    DIR_ATTRS = dict(st_mode=(S_IFDIR | 0o755), st_ctime=NOW,
+    DIR_ATTRS = dict(st_mode=(S_IFDIR | 0o555), st_ctime=NOW,
                      st_mtime=NOW, st_atime=NOW, st_nlink=2,
                      st_uid=os.getuid(), st_gid=os.getgid())
-    FILE_ATTRS = dict(st_mode=(S_IFREG | 0o755), st_ctime=NOW,
+    FILE_ATTRS = dict(st_mode=(S_IFREG | 0o444), st_ctime=NOW,
                       st_mtime=NOW, st_atime=NOW, st_nlink=1,
                       st_uid=os.getuid(), st_gid=os.getgid())
 
@@ -102,14 +102,12 @@ class FSTree():
         headline, _, section, children = root
         tree = FSTree(FSTree.DIR_ATTRS, headline)
 
-        section_attrs = FSTree.FILE_ATTRS.copy()
         if section:
+            section_attrs = FSTree.FILE_ATTRS.copy()
             section_content = "".join(section)
-        else:
-            section_content = ""
-        section_attrs["st_size"] = len(section_content)
-        section_node = FSTree(section_attrs, "section", section_content)
-        tree.add_child(section_node)
+            section_attrs["st_size"] = len(section_content)
+            section_node = FSTree(section_attrs, "section", section_content)
+            tree.add_child(section_node)
 
         for child in children:
             tree.add_child(FSTree.from_parse_tree(child))
