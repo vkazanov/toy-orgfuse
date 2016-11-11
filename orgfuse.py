@@ -10,6 +10,7 @@ from sys import argv, exit
 from time import time
 from StringIO import StringIO
 import re
+import os
 
 from fuse import FUSE, FuseOSError, Operations, LoggingMixIn
 
@@ -82,11 +83,6 @@ class OrgFileParser():
     def build_tree(self):
         tokens = self._tokenize(self._lines)
         parse_tree = self._parse_tokens(tokens)[0]
-
-        from pprint import pprint
-        pprint(tokens)
-        pprint(parse_tree)
-
         return FSTree.from_parse_tree(parse_tree)
 
 
@@ -95,22 +91,30 @@ NOW = time()
 class FSTree():
 
     DIR_ATTRS = dict(st_mode=(S_IFDIR | 0o755), st_ctime=NOW,
-                     st_mtime=NOW, st_atime=NOW, st_nlink=2)
+                     st_mtime=NOW, st_atime=NOW, st_nlink=2,
+                     st_uid=os.getuid(), st_gid=os.getgid())
     FILE_ATTRS = dict(st_mode=(S_IFREG | 0o755), st_ctime=NOW,
-                      st_mtime=NOW, st_atime=NOW, st_nlink=1)
+                      st_mtime=NOW, st_atime=NOW, st_nlink=1,
+                      st_uid=os.getuid(), st_gid=os.getgid())
 
     @staticmethod
     def from_parse_tree(root):
         headline, _, section, children = root
         tree = FSTree(FSTree.DIR_ATTRS, headline)
-        tree.add_child(FSTree(FSTree.FILE_ATTRS, "section"))
+
+        section_content = "".join(section) if section else None
+        section_node = FSTree(FSTree.FILE_ATTRS, "section", section_content)
+        tree.add_child(section_node)
+
         for child in children:
             tree.add_child(FSTree.from_parse_tree(child))
+
         return tree
 
-    def __init__(self, attrs, name):
+    def __init__(self, attrs, name, content=None):
         self.attrs = attrs
         self.name = name
+        self.content = content
         self.children = {}
 
     def add_child(self, child):
@@ -147,7 +151,12 @@ class FuseOperations(LoggingMixIn, Operations):
         return self.fd
 
     def read(self, path, size, offset, fh):
-        return self.data[path][offset:offset + size]
+        node = self.tree.find_path(path)
+        if node is None:
+            raise FuseOSError(EIO)
+        if node.content is None:
+            raise FuseOSError(EIO)
+        return node.content[offset:offset + size]
 
     def readdir(self, path, fh):
         node = self.tree.find_path(path)
@@ -168,7 +177,7 @@ if __name__ == '__main__':
 
     logging.basicConfig(level=logging.DEBUG)
     org_str = """
-just text
+document section
 * headline 1
 headline section 1
 ** inner headline 1
@@ -177,7 +186,7 @@ some inner section 1-2
 ** inner headline 2
 inner section 2
 ** inner headline 3
-*** inner inner section 1
+*** inner inner headline 1
 * headline 2
 section text 2
 """
