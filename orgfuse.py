@@ -89,33 +89,35 @@ class OrgFileParser():
 
         return FSTree.from_parse_tree(parse_tree)
 
+
+NOW = time()
+
 class FSTree():
 
-    DIR = 0
-    FILE = 1
+    DIR_ATTRS = dict(st_mode=(S_IFDIR | 0o755), st_ctime=NOW,
+                     st_mtime=NOW, st_atime=NOW, st_nlink=2)
+    FILE_ATTRS = dict(st_mode=(S_IFREG | 0o755), st_ctime=NOW,
+                      st_mtime=NOW, st_atime=NOW, st_nlink=1)
 
     @staticmethod
     def from_parse_tree(root):
         title, _, body, children = root
-        tree = FSTree(FSTree.DIR, title)
-        tree.add_child(FSTree(FSTree.FILE, "body"))
+        tree = FSTree(FSTree.DIR_ATTRS, title)
+        tree.add_child(FSTree(FSTree.FILE_ATTRS, "body"))
         for child in children:
             tree.add_child(FSTree.from_parse_tree(child))
         return tree
 
-    def __init__(self, _type, name):
-        self.type = _type
+    def __init__(self, attrs, name):
+        self.attrs = attrs
         self.name = name
         self.children = {}
 
     def add_child(self, child):
         self.children[child.name] = child
 
-    def _build_path(self, path):
-        return path.lstrip("/").split("/")
-
     def find_path(self, path):
-        return self._find_path(self._build_path(path))
+        return self._find_path(self._convert_path(path))
 
     def _find_path(self, path):
         if len(path) == 0:
@@ -127,12 +129,11 @@ class FSTree():
             return self.children[left_path]._find_path(path[1:])
         return None
 
-NOW = time()
+    def _convert_path(self, path):
+        return path.lstrip("/").split("/")
 
-DIR_ATTRS = dict(st_mode=(S_IFDIR | 0o755), st_ctime=NOW,
-                 st_mtime=NOW, st_atime=NOW, st_nlink=2)
-FILE_ATTRS = dict(st_mode=(S_IFREG | 0o755), st_ctime=NOW,
-                               st_mtime=NOW, st_atime=NOW, st_nlink=1)
+    def get_attrs(self):
+        return self.attrs
 
 class FuseOperations(LoggingMixIn, Operations):
 
@@ -158,10 +159,7 @@ class FuseOperations(LoggingMixIn, Operations):
         node = self.tree.find_path(path)
         if node is None:
             raise FuseOSError(ENOENT)
-        if node.type == FSTree.DIR:
-            return DIR_ATTRS
-        else:
-            return FILE_ATTRS
+        return node.get_attrs()
 
 if __name__ == '__main__':
     if len(argv) != 2:
