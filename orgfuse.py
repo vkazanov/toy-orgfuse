@@ -188,22 +188,5 @@ if __name__ == '__main__':
         exit(1)
 
     logging.basicConfig(level=logging.DEBUG)
-    org_str = """
-document section
-* headline 1
-headline section 1
-** inner headline 1
-some inner section 1
-some inner section 1-2
-** inner headline 2
-inner section 2
-** inner headline 3
-*** inner inner headline 1
-* headline 2
-section text 2
-"""
-    print(org_str)
-    strio = StringIO(org_str)
-    parser = OrgFileParser(strio)
-    document_tree = parser.build_tree()
-    fuse = FUSE(FuseOperations(document_tree), argv[1], foreground=True)
+    document_tree = OrgFileParser(open(org_file_path, "r")).build_tree()
+    FUSE(FuseOperations(document_tree), mount_path, foreground=True)

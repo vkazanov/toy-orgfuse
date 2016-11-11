@@ -1,0 +1,12 @@
+document section
+* headline 1
+headline section 1
+** inner headline 1
+some inner section 1
+some inner section 1-2
+** inner headline 2
+inner section 2
+** inner headline 3
+*** inner inner headline 1
+* headline 2
+section text 2
