@@ -85,7 +85,6 @@ class OrgFileParser():
         parse_tree = self._parse_tokens(tokens)[0]
         return FSTree.from_parse_tree(parse_tree)
 
-
 NOW = time()
 
 class FSTree():
@@ -171,9 +170,21 @@ class FuseOperations(LoggingMixIn, Operations):
             raise FuseOSError(ENOENT)
         return node.get_attrs()
 
+ERR_MSG = 'Usage: %s <orgfile> <mountpoint>'
+
 if __name__ == '__main__':
-    if len(argv) != 2:
-        print('usage: %s <mountpoint>' % argv[0])
+    if len(argv) != 3:
+        print(ERR_MSG % argv[0])
+        exit(1)
+
+    org_file_path = argv[1]
+    if not os.path.exists(org_file_path) or not os.path.isfile(org_file_path):
+        print(ERR_MSG % argv[0])
+        exit(1)
+
+    mount_path = argv[2]
+    if not os.path.exists(mount_path)or not os.path.isdir(mount_path):
+        print(ERR_MSG % argv[0])
         exit(1)
 
     logging.basicConfig(level=logging.DEBUG)
