@@ -15,52 +15,52 @@ from fuse import FUSE, FuseOSError, Operations, LoggingMixIn
 
 class OrgFileParser():
 
-    HEADER_TOKEN = 0
-    TEXT_TOKEN = 1
+    HEADLINE_TOKEN = 0
+    SECTION_TOKEN = 1
 
-    HEADER_RE = re.compile(r"(\*+) (.+)")
+    HEADLINE_RE = re.compile(r"(\*+) (.+)")
 
     def __init__(self, _file):
         self._lines = _file.readlines()
 
     def _tokenize(self, lines):
-        cur_body_strs = []
-        raw_tokens = [(self.HEADER_TOKEN, 0, "root")]
+        cur_section_strs = []
+        raw_tokens = [(self.HEADLINE_TOKEN, 0, "root")]
         depth = 0
         for line in lines:
-            match = self.HEADER_RE.match(line)
+            match = self.HEADLINE_RE.match(line)
             if match is None:
-                cur_body_strs.append(line)
+                cur_section_strs.append(line)
             else:
-                if cur_body_strs:
-                    text_token = (self.TEXT_TOKEN, depth, cur_body_strs)
-                    raw_tokens.append(text_token)
-                    cur_body_strs = []
+                if cur_section_strs:
+                    section_token = (self.SECTION_TOKEN, depth, cur_section_strs)
+                    raw_tokens.append(section_token)
+                    cur_section_strs = []
                 depth = len(match.group(1))
-                header_token = (self.HEADER_TOKEN, depth, match.group(2))
-                raw_tokens.append(header_token)
+                headline_token = (self.HEADLINE_TOKEN, depth, match.group(2))
+                raw_tokens.append(headline_token)
         else:
-            if cur_body_strs:
-                text_token = (self.TEXT_TOKEN, depth, cur_body_strs)
-                raw_tokens.append(text_token)
+            if cur_section_strs:
+                section_token = (self.SECTION_TOKEN, depth, cur_section_strs)
+                raw_tokens.append(section_token)
 
         tokens = []
         for i, token in enumerate(raw_tokens):
-            t_type, t_depth, t_body = raw_tokens[i]
-            if t_type != self.HEADER_TOKEN:
+            t_type, t_depth, t_section = raw_tokens[i]
+            if t_type != self.HEADLINE_TOKEN:
                 continue
-            nt_type, nt_depth, nt_body = raw_tokens[i+1]
-            title = t_body
+            nt_type, nt_depth, nt_section = raw_tokens[i+1]
+            headline = t_section
             depth = t_depth
-            body = nt_body if nt_type == self.TEXT_TOKEN else None
-            tokens.append((title, depth, body))
+            section = nt_section if nt_type == self.SECTION_TOKEN else None
+            tokens.append((headline, depth, section))
 
         return tokens
 
     def _parse_tokens(self, tokens):
         res = []
         while tokens:
-            title, depth, body = tokens[0]
+            headline, depth, section = tokens[0]
             tokens = tokens[1:]
 
             child_tokens = []
@@ -76,7 +76,7 @@ class OrgFileParser():
 
             children = self._parse_tokens(child_tokens)
 
-            res.append((title, depth, body, children))
+            res.append((headline, depth, section, children))
         return res
 
     def build_tree(self):
@@ -101,9 +101,9 @@ class FSTree():
 
     @staticmethod
     def from_parse_tree(root):
-        title, _, body, children = root
-        tree = FSTree(FSTree.DIR_ATTRS, title)
-        tree.add_child(FSTree(FSTree.FILE_ATTRS, "body"))
+        headline, _, section, children = root
+        tree = FSTree(FSTree.DIR_ATTRS, headline)
+        tree.add_child(FSTree(FSTree.FILE_ATTRS, "section"))
         for child in children:
             tree.add_child(FSTree.from_parse_tree(child))
         return tree
@@ -169,20 +169,20 @@ if __name__ == '__main__':
     logging.basicConfig(level=logging.DEBUG)
     org_str = """
 just text
-* header 1
-header text 1
-** inner header 1
-some inner text 1
-some inner text 1-2
-** inner header 2
-inner text2
-** inner header 3
-*** inner inner header 1
-* header 2
-header text 2
+* headline 1
+headline section 1
+** inner headline 1
+some inner section 1
+some inner section 1-2
+** inner headline 2
+inner section 2
+** inner headline 3
+*** inner inner section 1
+* headline 2
+section text 2
 """
     print(org_str)
     strio = StringIO(org_str)
     parser = OrgFileParser(strio)
-    tree = parser.build_tree()
-    fuse = FUSE(FuseOperations(tree), argv[1], foreground=True)
+    document_tree = parser.build_tree()
+    fuse = FUSE(FuseOperations(document_tree), argv[1], foreground=True)
