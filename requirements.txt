@@ -1,0 +1,2 @@
+fusepy==2.0.4
+pkg-resources==0.0.0
