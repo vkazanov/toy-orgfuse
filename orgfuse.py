@@ -1,14 +1,11 @@
 #!/usr/bin/env python
-from __future__ import print_function, absolute_import, division
 
 import logging
 
-from collections import defaultdict
 from errno import ENOENT, EROFS, EIO
 from stat import S_IFDIR, S_IFLNK, S_IFREG
 from sys import argv, exit
 from time import time
-from StringIO import StringIO
 import re
 import os
 
@@ -82,8 +79,7 @@ class OrgFileParser():
 
     def build_tree(self):
         tokens = self._tokenize(self._lines)
-        parse_tree = self._parse_tokens(tokens)[0]
-        return FSTree.from_parse_tree(parse_tree)
+        return self._parse_tokens(tokens)[0]
 
 NOW = time()
 
@@ -145,7 +141,6 @@ class FuseOperations(LoggingMixIn, Operations):
 
     def __init__(self, tree):
         self.tree = tree
-        self.data = defaultdict(str)
         self.fd = 0
 
     def open(self, path, flags):
@@ -170,23 +165,33 @@ class FuseOperations(LoggingMixIn, Operations):
             raise FuseOSError(ENOENT)
         return node.get_attrs()
 
-ERR_MSG = 'Usage: %s <orgfile> <mountpoint>'
+HELP_MSG = """Usage: %s <orgfile> <mountpoint>
+
+Mount an org-mode file as a directory.
+
+Arguments:
+
+  orgfile - an org-mode file to mount
+
+  mountpoint - a directory to mount the file to"""
 
 if __name__ == '__main__':
     if len(argv) != 3:
-        print(ERR_MSG % argv[0])
+        print(HELP_MSG % argv[0])
         exit(1)
 
     org_file_path = argv[1]
     if not os.path.exists(org_file_path) or not os.path.isfile(org_file_path):
-        print(ERR_MSG % argv[0])
+        print(HELP_MSG % argv[0])
         exit(1)
 
     mount_path = argv[2]
     if not os.path.exists(mount_path)or not os.path.isdir(mount_path):
-        print(ERR_MSG % argv[0])
+        print(HELP_MSG % argv[0])
         exit(1)
 
     logging.basicConfig(level=logging.DEBUG)
-    document_tree = OrgFileParser(open(org_file_path, "r")).build_tree()
-    FUSE(FuseOperations(document_tree), mount_path, foreground=True)
+
+    parse_tree = OrgFileParser(open(org_file_path, "r")).build_tree()
+    fs_tree = FSTree.from_parse_tree(parse_tree)
+    FUSE(FuseOperations(fs_tree), mount_path, foreground=True)
