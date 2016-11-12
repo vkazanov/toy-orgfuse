@@ -1,0 +1,54 @@
+* What?
+
+  Orgfuse is a small Python utility allowing to mount org-mode files as FUSE
+  filesystems.
+
+  Long story short: the outline tree becomes a tree of directories, text sections
+  become files within the directory tree, etc.
+
+* How?
+
+  Requirements:
+
+  - Python 2.7.x
+
+  - a rather recent ~libfuse~
+
+  - ~fusepy~, a Python ~libfuse~ wrapper
+
+  Having ~libfuse~ installed the following should work:
+
+#+BEGIN_EXAMPLE
+> pip install -r requirements.txt
+...
+> mkdir mount
+> python orgfuse.py tests/simple.org mount/
+... in other term ...
+> tree mount
+mount/
+├── headline 1
+│   ├── inner headline 1
+│   │   └── section
+│   ├── inner headline 2
+│   │   └── section
+│   ├── inner headline 3
+│   │   └── inner inner headline 1
+│   └── section
+├── headline 2
+│   └── section
+└── section
+
+6 directories, 5 files
+#+END_EXAMPLE
+
+* Plans?
+
+  Current state of affairs:
+
+  - [X] basic org-mode markdown parser
+
+  - [X] use FUSE to display the headline tree
+
+  - [ ] non-unique headlines
+
+  - [ ] parse and publish headline metadata (todo states, tags, etc)
