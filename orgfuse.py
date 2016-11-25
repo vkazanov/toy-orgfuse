@@ -3,13 +3,14 @@
 import logging
 
 from errno import ENOENT, EROFS, EIO
-from stat import S_IFDIR, S_IFLNK, S_IFREG
+from stat import S_IFDIR, S_IFREG
 from sys import argv, exit
 from time import time
 import re
 import os
 
 from fuse import FUSE, FuseOSError, Operations, LoggingMixIn
+
 
 class OrgFileParser():
 
@@ -81,7 +82,9 @@ class OrgFileParser():
         tokens = self._tokenize(self._lines)
         return self._parse_tokens(tokens)[0]
 
+
 NOW = time()
+
 
 class FSTree():
 
@@ -137,6 +140,7 @@ class FSTree():
     def get_attrs(self):
         return self.attrs
 
+
 class FuseOperations(LoggingMixIn, Operations):
 
     def __init__(self, tree):
@@ -165,6 +169,7 @@ class FuseOperations(LoggingMixIn, Operations):
             raise FuseOSError(ENOENT)
         return node.get_attrs()
 
+
 HELP_MSG = """Usage: %s <orgfile> <mountpoint>
 
 Mount an org-mode file as a directory.
@@ -191,7 +196,6 @@ if __name__ == '__main__':
         exit(1)
 
     logging.basicConfig(level=logging.DEBUG)
-
     parse_tree = OrgFileParser(open(org_file_path, "r")).build_tree()
     fs_tree = FSTree.from_parse_tree(parse_tree)
     FUSE(FuseOperations(fs_tree), mount_path, foreground=True)
