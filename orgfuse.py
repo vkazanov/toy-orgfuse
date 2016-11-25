@@ -1,15 +1,15 @@
 #!/usr/bin/env python
 
 import logging
-
-from errno import ENOENT, EROFS, EIO
+import os
+import re
+from collections import OrderedDict
+from errno import EIO, ENOENT, EROFS
 from stat import S_IFDIR, S_IFREG
 from sys import argv, exit
 from time import time
-import re
-import os
 
-from fuse import FUSE, FuseOSError, Operations, LoggingMixIn
+from fuse import FUSE, FuseOSError, LoggingMixIn, Operations
 
 
 class OrgFileParser():
@@ -116,7 +116,7 @@ class FSTree():
         self.attrs = attrs
         self.name = name
         self.content = content
-        self.children = {}
+        self.children = OrderedDict()
 
     def add_child(self, child):
         self.children[child.name] = child
